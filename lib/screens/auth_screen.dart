@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart'; // Importar el servicio
+import 'home_screen.dart'; // Importar la pantalla principal para la navegación
 
 // --- Definición del Estado de la Pantalla ---
 enum AuthMode { login, register }
@@ -9,8 +10,8 @@ enum AuthMode { login, register }
 final authModeProvider = StateProvider<AuthMode>((ref) => AuthMode.login);
 
 // --- Colores y Estilos ---
-const Color primaryTextColor = Color(0xFF6C4B4B);
-const Color backgroundColor = Color(0xFFEFE8DE);
+const Color primaryTextColor = Color(0xFF6C4B4B); // Color rojizo oscuro
+const Color backgroundColor = Color(0xFFEFE8DE); // Color de fondo claro
 const Color buttonColor = Colors.black;
 const Color buttonTextColor = Colors.white;
 const Color inputFillColor = Colors.white;
@@ -19,7 +20,7 @@ final TextStyle appTitleStyle = TextStyle(
   fontSize: 32,
   fontWeight: FontWeight.bold,
   color: primaryTextColor,
-  fontFamily: 'Pacifico',
+  // fontFamily: 'Pacifico', // Descomenta si usas la fuente Pacifico
 );
 
 final TextStyle sectionTitleStyle = TextStyle(
@@ -68,16 +69,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
-  // --- Lógica de Navegación Exitosa (temporal) ---
+  // --- Lógica de Navegación Exitosa ---
   void _goToHome() {
-    // En una aplicación real, aquí navegarías a la pantalla principal
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('¡Autenticación Exitosa! Token guardado.'),
-        backgroundColor: Colors.green,
-      ),
+    // Navegamos a HomeScreen y removemos todas las rutas anteriores
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (Route<dynamic> route) => false,
     );
-    // TODO: Implementar Navigator.pushReplacement para ir a HomeScreen
   }
 
   // --- Lógica de Login (Consumo de API) ---
@@ -88,7 +86,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     try {
-      // Aseguramos que el servicio de autenticación esté disponible
       final authService = ref.read(authServiceProvider);
       setState(() => _isLoading = true);
 
@@ -97,7 +94,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         passwordController.text,
       );
 
-      _goToHome();
+      _goToHome(); // Navegación exitosa
 
     } catch (e) {
       _showError(e);
@@ -114,18 +111,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     try {
-      // Aseguramos que el servicio de autenticación esté disponible
       final authService = ref.read(authServiceProvider);
       setState(() => _isLoading = true);
 
-      // La función register incluye el login automático
+      // La función register maneja la llamada POST /usuarios y luego el login POST /auth/login
       await authService.register(
         nameController.text,
         emailController.text,
         passwordController.text,
       );
 
-      _goToHome();
+      _goToHome(); // Navegación exitosa
 
     } catch (e) {
       _showError(e);
@@ -167,7 +163,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final titleText = isLoginMode ? 'Inicia sesión con tu cuenta' : 'Crea una cuenta';
     final descriptionText = isLoginMode
         ? 'Ingresa tu correo electrónico y contraseña para iniciar sesión en esta aplicación.'
-        : 'Ingresa los siguientes datos para registrar una nueva cuenta.';
+        : 'Ingresa tu nombre, correo electrónico y contraseña para registrar una nueva cuenta.';
     final mainButtonText = isLoginMode ? 'Iniciar Sesión' : 'Registrarse';
     final switchButtonText = isLoginMode ? 'Registrarse' : 'Iniciar Sesión';
 
@@ -186,15 +182,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               children: [
                 const SizedBox(height: 20),
                 // Aquí va la imagen de la maceta
-                Image.asset(
-                    'assets/plant_Icon.png',
+                Image.network(
+                    'https://placehold.co/100x100/A07E63/FFFFFF?text=Planta',
                     height: 100,
                     errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.grass, size: 100, color: primaryTextColor) // Fallback si no hay assets
+                    const Icon(Icons.grass, size: 100, color: primaryTextColor) // Fallback si no hay assets
                 ),
                 const SizedBox(height: 20),
                 Text('Jardín de Hábitos', style: appTitleStyle),
-                const SizedBox(height: 30),
+                const SizedBox(height: 40),
 
                 // --- Títulos dinámicos ---
                 Align(
@@ -270,6 +266,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   height: 50,
                   child: OutlinedButton(
                     onPressed: _isLoading ? null : () {
+                      // Cambia el estado del provider para alternar la vista
                       ref.read(authModeProvider.notifier).state = isLoginMode
                           ? AuthMode.register
                           : AuthMode.login;

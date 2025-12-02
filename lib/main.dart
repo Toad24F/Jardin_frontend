@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/auth_screen.dart'; // Importa tu pantalla
+import 'screens/home_screen.dart'; // Importa la nueva pantalla principal
 import 'services/auth_service.dart'; // Importa tus servicios
 
 void main() async {
@@ -31,10 +32,17 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Nota: El sharedPreferencesProvider ya no es un FutureProvider, sino un Provider simple
-    // que fue sobreescrito síncronamente en main. Por lo tanto, no necesitamos .when() aquí.
+    // El AuthService ya está listo para ser usado porque SharedPreferences
+    // se resolvió en main() y se inyectó de forma síncrona.
+    final authService = ref.watch(authServiceProvider);
 
-    // Si la inicialización en main() fallara, la app ni siquiera llegaría aquí.
+    // Obtenemos el token guardado (si existe)
+    final token = authService.getToken();
+
+    // Determinamos la pantalla de inicio
+    final Widget initialScreen = (token != null && token.isNotEmpty)
+        ? const HomeScreen() // Si hay token, va a Home
+        : const AuthScreen(); // Si no hay token, va a Login/Register
 
     return MaterialApp(
       title: 'Jardín de Hábitos',
@@ -45,8 +53,8 @@ class MyApp extends ConsumerWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
         scaffoldBackgroundColor: backgroundColor,
       ),
-      // Navegamos directamente a la pantalla de Auth, que es la primera vista
-      home: const AuthScreen(),
+      // Navegamos a la pantalla inicial determinada por el estado de autenticación
+      home: initialScreen,
     );
   }
 }
