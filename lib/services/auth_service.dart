@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/habito.dart';
+import '../models/registro_dia.dart';
 
 // --- Constantes de la API ---
 const String baseUrl = 'http://192.168.100.25:3000';
 const String loginUrl = '$baseUrl/auth/login';
 const String registerUrl = '$baseUrl/usuarios';
-const String habitosUrl = '$baseUrl/habitos'; // Nueva URL para hábitos
+const String habitosUrl = '$baseUrl/habitos';
+const String registrosUrl = '$baseUrl/registros';
 
 // --- Modelos de Datos ---
 
@@ -81,6 +83,68 @@ class AuthService {
         return [];
       }
       throw e.response?.data['message'] ?? 'Error al obtener los hábitos.';
+    }
+  }
+  // --- Lógica de Registros (Nuevo) ---
+
+  // Obtiene todos los registros de un hábito específico (GET /registros)
+  Future<List<RegistroDia>> getRegistros(String habitId) async {
+    try {
+      final response = await _dio.get(
+        registrosUrl,
+        // Usamos la propiedad `data` para enviar el body en un GET con Dio,
+        // aunque un body en GET es inusual, tu backend lo espera.
+        data: {
+          "id_habito": habitId,
+        },
+        options: _getAuthOptions().copyWith(
+          // Aseguramos que el método es POST o incluimos Content-Type si es GET con body
+          contentType: 'application/json',
+        ),
+      );
+
+      if (response.data is List) {
+        return (response.data as List)
+            .map((json) => RegistroDia.fromJson(json))
+            .toList();
+      }
+      return [];
+
+    } on DioException catch (e) {
+      // El backend devuelve 404 si no hay registros [cite: toad24f/jardin-de-habitos/jardin-de-habitos-2023d57ce6a93f24a13c982fa7ec1b5b74893bb4/src/registros/registros.service.ts]
+      if (e.response?.statusCode == 404) {
+        return [];
+      }
+      throw e.response?.data['message'] ?? 'Error al obtener los registros.';
+    }
+  }
+  /**
+   * Envía un registro diario al servidor.
+   * POST /registros
+   */
+  Future<void> logHabitDay({
+    required String habitId,
+    required int vecesRealizadas,
+    required int dificultad,
+    String? sentimiento,
+    String? motivo,
+  }) async {
+    try {
+      await _dio.post(
+        registrosUrl,
+        data: {
+          "id_habito": habitId,
+          "veces_realizadas": vecesRealizadas,
+          "dificultad": dificultad,
+          // Estos campos son opcionales en el DTO de NestJS, enviamos null si están vacíos
+          "sentimiento": sentimiento,
+          "motivo": motivo,
+        },
+        options: _getAuthOptions(),
+      );
+
+    } on DioException catch (e) {
+      throw e.response?.data['message'] ?? 'Error al registrar el día.';
     }
   }
 

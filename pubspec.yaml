@@ -38,6 +38,7 @@ dependencies:
   dio: ^5.0.0 # Cliente HTTP robusto
   flutter_riverpod: ^2.5.1 # Gestión de estado moderna
   shared_preferences: ^2.2.3 # Almacenamiento simple de datos (e.g., token JWT)
+  table_calendar: ^3.1.2
 
 dev_dependencies:
   flutter_test:
