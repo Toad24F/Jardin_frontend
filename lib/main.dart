@@ -28,7 +28,7 @@ class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   // Color de fondo para que sea consistente
-  static const Color backgroundColor = Color(0xFFEFE8DE);
+  static const Color backgroundColor = Color(0xFFDBCFB9);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

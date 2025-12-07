@@ -182,11 +182,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               children: [
                 const SizedBox(height: 20),
                 // Aquí va la imagen de la maceta
-                Image.network(
-                    'https://placehold.co/100x100/A07E63/FFFFFF?text=Planta',
-                    height: 100,
-                    errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.grass, size: 100, color: primaryTextColor) // Fallback si no hay assets
+                Image.asset(
+                  'assets/9.png',
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 20),
                 Text('Jardín de Hábitos', style: appTitleStyle),
@@ -284,7 +284,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       ),
                     ),
                     child: Text(
-                      'Cambiar a $switchButtonText',
+                      'Cambia a $switchButtonText',
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),

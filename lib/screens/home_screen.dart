@@ -11,7 +11,7 @@ import 'calendar_screen.dart'; // Importar nuevo servicio local
 
 // Definición de colores principales
 const Color primaryColor = Color(0xFF6C4B4B);
-const Color lightBackgroundColor = Color(0xFFEFE8DE);
+const Color lightBackgroundColor = Color(0xFFDBCFB9);
 const Color accentGreen = Color(0xFF7D9C68);
 
 // Para mantener la consistencia del título
@@ -33,6 +33,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Mapa para almacenar la posición actual de cada maceta
   Map<String, Offset> _habitPositions = {};
   bool _isInitialized = false;
+  // Nuevo estado para evitar recargas automáticas infinitas en caso de error persistente.
+  bool _hasAttemptedRefetchAfterLoginError = false;
 
   // Inicialización de posiciones
   @override
@@ -43,20 +45,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // Distribuye las macetas en una cuadrícula inicial si *no* hay posiciones guardadas
-  void _initializePositions(List<Habito> habitos, LocalHabitPositionService localStorageService) {
+  void _initializePositions(
+      List<Habito> habitos,
+      LocalHabitPositionService localStorageService,
+      ) {
     if (_isInitialized || habitos.isEmpty) return;
 
     // 1. Intentar cargar posiciones guardadas localmente
+    // NOTA IMPORTANTE: Si el LocalStorageService no usa el UserID como parte de su clave
+    // para guardar las posiciones, las posiciones del usuario anterior se cargarán aquí.
     final savedPositions = localStorageService.loadPositions();
     final Map<String, Offset> initialPositions = {};
 
     // 2. Usar posiciones guardadas o calcular posiciones por defecto
     if (savedPositions.isNotEmpty) {
       for (var habit in habitos) {
-        initialPositions[habit.id] = savedPositions[habit.id] ?? _getDefaultPosition(habitos, habit.id);
+        initialPositions[habit.id] =
+            savedPositions[habit.id] ?? _getDefaultPosition(habitos, habit.id);
       }
     } else {
-      // Generar posiciones por defecto si es la primera carga absoluta
+      // Generar posiciones por defecto si es la primera carga absoluta o si no hay posiciones
       _initializeDefaultPositions(habitos);
       // No salimos de aquí, ya que _initializeDefaultPositions llama a setState
       _isInitialized = true;
@@ -82,10 +90,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final int col = index % 2;
     final int row = index ~/ 2;
 
-    return Offset(
-      startX + col * stepX,
-      startY + row * stepY,
-    );
+    return Offset(startX + col * stepX, startY + row * stepY);
   }
 
   // Función interna para generar la distribución por defecto y actualizar el estado
@@ -127,7 +132,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Widget de la Maceta Draggable
   Widget _buildHabitMata(BuildContext context, Habito habito) {
     // 1. Obtener la posición actual
-    Offset position = _habitPositions[habito.id] ?? _getDefaultPosition(ref.watch(habitosProvider).value ?? [], habito.id);
+    Offset position =
+        _habitPositions[habito.id] ??
+            _getDefaultPosition(ref.watch(habitosProvider).value ?? [], habito.id);
 
     final int etapa = habito.etapaMata.clamp(1, 15);
     final String imagePath = 'assets/$etapa.png';
@@ -148,10 +155,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           });
         },
         onPanEnd: (details) {
-          // *** IMPLEMENTACIÓN PARA PERSISTENCIA LOCAL ***
           // Al soltar la maceta, guardamos la nueva posición en SharedPreferences.
           final localStorageService = ref.read(localStorageServiceProvider);
-          localStorageService.savePositions(_habitPositions).catchError((error) {
+          localStorageService.savePositions(_habitPositions).catchError((
+              error,
+              ) {
             _showError(error);
           });
 
@@ -159,10 +167,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
         // Al tocar la maceta (para ir a la vista de calendario)
         onTap: () {
-          // TODO: Navegar a la pantalla del calendario/registro diario
+          // 1. Invalidar el provider de registros *antes* de navegar
+          ref.invalidate(
+            currentHabitRegistrosProvider(habito.id),
+          ); // <-- ESTO ES CLAVE
+
           Navigator.of(context).push(
-            // Navegamos a CalendarScreen, pasando el objeto Habito
-            MaterialPageRoute(builder: (context) => CalendarScreen(habito: habito)),
+            MaterialPageRoute(
+              builder: (context) => CalendarScreen(habito: habito),
+            ),
           );
         },
         child: Column(
@@ -196,8 +209,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-            'Error: ${error.toString()}',
-            style: const TextStyle(color: Colors.white)
+          'Error: ${error.toString()}',
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.red,
       ),
@@ -207,23 +220,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authService = ref.read(authServiceProvider);
-    final localStorageService = ref.read(localStorageServiceProvider); // Nuevo servicio
-
+    final localStorageService = ref.read(
+      localStorageServiceProvider,
+    ); // Nuevo servicio
+    final String userName = authService.getUserName() ?? 'Usuario';
+    final String userEmail = authService.getUserEmail() ?? 'Correo@gmail.com';
     final habitosAsyncValue = ref.watch(habitosProvider);
-    final TextStyle homeTitleStyle = appTitleStyle.copyWith(fontSize: 24, color: primaryColor);
+    final TextStyle homeTitleStyle = appTitleStyle.copyWith(
+      fontSize: 24,
+      color: primaryColor,
+    );
 
     void navigateToAddHabit() {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const AddHabitScreen()),
-      ).then((_) {
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (context) => const AddHabitScreen()))
+          .then((_) {
         ref.invalidate(habitosProvider);
       });
     }
 
     void logout() async {
       await authService.saveToken('');
-      // Opcional: Limpiar posiciones locales al cerrar sesión
+
+      // FIX: Al cerrar sesión, limpiamos el estado local de la posición.
+      // Esto asegura que la próxima cuenta que inicie sesión no cargue las
+      // posiciones de la cuenta anterior, sino las suyas o las por defecto.
       await localStorageService.savePositions({});
+
+      // También limpiamos el estado local en el componente
+      setState(() {
+        _habitPositions = {};
+        _isInitialized = false;
+        _hasAttemptedRefetchAfterLoginError = false; // Resetear el control de recarga
+      });
+
+      // Aseguramos que el proveedor de hábitos se invalide y no mantenga los datos de la cuenta anterior.
+      ref.invalidate(habitosProvider);
 
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const AuthScreen()),
@@ -234,15 +266,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Inicialización de posiciones al obtener los datos la primera vez
     habitosAsyncValue.whenData((habitos) {
       if (!_isInitialized && habitos.isNotEmpty) {
+        // En este punto, si el LocalStorageService NO usa una clave única por usuario,
+        // todavía cargará las posiciones del usuario anterior.
         _initializePositions(habitos, localStorageService);
       } else if (habitos.isEmpty && _habitPositions.isNotEmpty) {
         // Limpia posiciones si el usuario eliminó todos los hábitos
         _habitPositions = {};
         _isInitialized = false;
+        // FIX: Limpiamos las posiciones guardadas localmente al detectar que la lista de hábitos está vacía
         localStorageService.savePositions({});
       }
-    });
 
+      // Si la carga fue exitosa, podemos resetear el control de reintento.
+      if (_hasAttemptedRefetchAfterLoginError) {
+        // Se carga correctamente después del reintento automático.
+        _hasAttemptedRefetchAfterLoginError = false;
+      }
+    });
 
     return Scaffold(
       backgroundColor: lightBackgroundColor,
@@ -254,9 +294,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: primaryColor, size: 30),
         actions: [
+          // Nuevo botón para refrescar manualmente los hábitos
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(habitosProvider),
+            tooltip: 'Refrescar la lista de hábitos',
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: navigateToAddHabit,
+            tooltip: 'Añadir nuevo hábito',
           ),
           const SizedBox(width: 10),
         ],
@@ -269,32 +316,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: <Widget>[
-              const DrawerHeader(
+              DrawerHeader(
                 decoration: BoxDecoration(color: primaryColor),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CircleAvatar(
                       radius: 30,
-                      backgroundImage: NetworkImage('https://placehold.co/100x100/FFFFFF/000000?text=U'),
+                      backgroundImage: NetworkImage(
+                        'https://placehold.co/100x100/FFFFFF/000000?text=U',
+                      ),
                     ),
                     SizedBox(height: 10),
-                    Text('Usuario', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text('Correo@gmail.com', style: TextStyle(color: Color(0xFFC7B1A5), fontSize: 14)),
+                    // Usamos el nombre real
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    // Usamos el correo real
+                    Text(
+                      userEmail,
+                      style: const TextStyle(
+                        color: Color(0xFFC7B1A5),
+                        fontSize: 14,
+                      ),
+                    ),
                   ],
                 ),
               ),
 
-              _buildDrawerItem(icon: Icons.home, title: 'Inicio', onTap: () => Navigator.pop(context)),
-              _buildDrawerItem(icon: Icons.add_circle_outline, title: 'Registrar Hábito', onTap: () {
-                Navigator.pop(context);
-                navigateToAddHabit();
-              }),
+              _buildDrawerItem(
+                icon: Icons.home,
+                title: 'Inicio',
+                onTap: () => Navigator.pop(context),
+              ),
+              _buildDrawerItem(
+                icon: Icons.add_circle_outline,
+                title: 'Registrar Hábito',
+                onTap: () {
+                  Navigator.pop(context);
+                  navigateToAddHabit();
+                },
+              ),
 
-              const SizedBox(height: 250),
-
-              _buildDrawerItem(icon: Icons.person, title: 'Usuario'),
-              _buildDrawerItem(icon: Icons.settings, title: 'Ajustes'),
               _buildDrawerItem(
                 icon: Icons.logout,
                 title: 'Cerrar sesión',
@@ -314,16 +382,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               loading: () => const Center(child: CircularProgressIndicator()),
 
               error: (e, s) {
+                final isTokenNotFoundError = e.toString().contains('Token JWT no encontrado');
+
+                // FIX: Detectamos el error de carrera (token no cargado a tiempo)
+                if (isTokenNotFoundError && !_hasAttemptedRefetchAfterLoginError) {
+                  // Marcamos que hemos intentado el reintento automático para evitar bucles.
+                  setState(() {
+                    _hasAttemptedRefetchAfterLoginError = true;
+                  });
+
+                  // Reintentamos la carga de hábitos en el siguiente ciclo de construcción.
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    ref.invalidate(habitosProvider);
+                  });
+
+                  // Mostramos un indicador de carga mientras se reintenta automáticamente.
+                  return const Center(
+                    child: CircularProgressIndicator(color: primaryColor),
+                  );
+                }
+
+                // Lógica de error original para 401
                 if (e is DioException && e.response?.statusCode == 401) {
                   WidgetsBinding.instance.addPostFrameCallback((_) => logout());
-                  return const Center(child: Text("Sesión expirada. Redirigiendo...", style: TextStyle(color: primaryColor)));
+                  return const Center(
+                    child: Text(
+                      "Sesión expirada. Redirigiendo...",
+                      style: TextStyle(color: primaryColor),
+                    ),
+                  );
                 }
+
+                // Lógica de error para cualquier otro error
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Error al cargar hábitos: $e', textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                      Text(
+                        'Error al cargar hábitos: $e',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
+                      ),
                       const SizedBox(height: 10),
+                      // Dejamos el botón "Reintentar" solo para errores no manejados automáticamente.
                       ElevatedButton(
                         onPressed: () => ref.invalidate(habitosProvider),
                         child: const Text('Reintentar'),
@@ -339,7 +440,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('¡Aún no tienes hábitos registrados!', style: TextStyle(fontSize: 18, color: primaryColor)),
+                        const Text(
+                          '¡Aún no tienes hábitos registrados!',
+                          style: TextStyle(fontSize: 18, color: primaryColor),
+                        ),
                         const SizedBox(height: 10),
                         ElevatedButton.icon(
                           onPressed: navigateToAddHabit,
@@ -355,7 +459,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // con las posiciones por defecto o guardadas
                 return Stack(
                   children: [
-                    ...habitos.map((habito) => _buildHabitMata(context, habito)).toList(),
+                    ...habitos
+                        .map((habito) => _buildHabitMata(context, habito))
+                        .toList(),
                   ],
                 );
               },
@@ -363,11 +469,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
 
           // Barra inferior (la tierra verde)
-          Container(
-            height: 80,
-            width: double.infinity,
-            color: accentGreen,
-          ),
+          Container(height: 80, width: double.infinity, color: accentGreen),
         ],
       ),
     );

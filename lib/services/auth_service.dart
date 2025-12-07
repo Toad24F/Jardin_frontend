@@ -6,24 +6,32 @@ import '../models/habito.dart';
 import '../models/registro_dia.dart';
 
 // --- Constantes de la API ---
-const String baseUrl = 'http://192.168.100.25:3000';
+const String baseUrl = 'http://192.168.100.40:3000';
 const String loginUrl = '$baseUrl/auth/login';
 const String registerUrl = '$baseUrl/usuarios';
 const String habitosUrl = '$baseUrl/habitos';
 const String registrosUrl = '$baseUrl/registros';
 
-// --- Modelos de Datos ---
+// --- Modelos de Datos (ACTUALIZADO) ---
 
 class AuthResponse {
   final String accessToken;
   final String message;
+  final String nombre; // Nuevo campo
+  final String email;  // Nuevo campo
 
-  AuthResponse({required this.accessToken, required this.message});
+
+  AuthResponse({required this.accessToken, required this.message, required this.nombre, required this.email}); // Constructor actualizado
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
+    // Extraer el objeto 'usuario' anidado
+    final usuario = json['usuario'] as Map<String, dynamic>;
+
     return AuthResponse(
       accessToken: json['access_token'] as String,
       message: json['message'] as String,
+      nombre: usuario['nombre'] as String, // Extraído del objeto usuario
+      email: usuario['email'] as String,   // Extraído del objeto usuario
     );
   }
 }
@@ -39,6 +47,21 @@ class AuthService {
   // Guarda el token JWT en el almacenamiento local seguro
   Future<void> saveToken(String token) async {
     await _prefs.setString('accessToken', token);
+  }
+  Future<void> saveUserName(String name) async {
+    await _prefs.setString('userName', name);
+  }
+
+  String? getUserName() {
+    return _prefs.getString('userName');
+  }
+
+  Future<void> saveUserEmail(String email) async {
+    await _prefs.setString('userEmail', email);
+  }
+
+  String? getUserEmail() {
+    return _prefs.getString('userEmail');
   }
 
   // Retorna el token JWT si existe en el almacenamiento
@@ -148,7 +171,7 @@ class AuthService {
     }
   }
 
-  // Intenta iniciar sesión y guarda el token
+  // Intenta iniciar sesión y guarda el token, nombre y email (ACTUALIZADO)
   Future<AuthResponse> login(String email, String password) async {
     try {
       final response = await _dio.post(
@@ -161,6 +184,11 @@ class AuthService {
 
       final authResponse = AuthResponse.fromJson(response.data);
       await saveToken(authResponse.accessToken);
+
+      // Guardar nombre y email obtenidos de la respuesta de la API
+      await saveUserEmail(authResponse.email);
+      await saveUserName(authResponse.nombre);
+
       return authResponse;
 
     } on DioException catch (e) {
@@ -168,7 +196,7 @@ class AuthService {
     }
   }
 
-  // Intenta registrar un nuevo usuario y automáticamente inicia sesión
+  // Intenta registrar un nuevo usuario y automáticamente inicia sesión (ACTUALIZADO)
   Future<AuthResponse> register(String nombre, String email, String password) async {
     try {
       await _dio.post(
@@ -180,6 +208,7 @@ class AuthService {
         },
       );
 
+      // La función login ahora se encarga de guardar el nombre y email devueltos por la API.
       final authResponse = await login(email, password);
       return authResponse;
 

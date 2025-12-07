@@ -4,7 +4,7 @@ import '../services/auth_service.dart';
 
 // Definición de colores principales
 const Color primaryColor = Color(0xFF6C4B4B);
-const Color lightBackgroundColor = Color(0xFFEFE8DE);
+const Color lightBackgroundColor = Color(0xFFDBCFB9);
 const Color inputFillColor = Colors.white;
 
 class LogDayScreen extends ConsumerStatefulWidget {

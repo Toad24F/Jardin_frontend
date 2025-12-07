@@ -19,6 +19,7 @@ const Color failureColor = Color(0xFFDC3545); // Rojo (Estado 1)
 // Proveedor de Registros para el Calendario
 final currentHabitRegistrosProvider = FutureProvider.family<List<RegistroDia>, String>((ref, habitId) async {
   final authService = ref.watch(authServiceProvider);
+  // Esta línea dispara el GET /registros. Si el provider se invalida, esta función se ejecuta de nuevo.
   return authService.getRegistros(habitId);
 });
 
@@ -174,6 +175,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     // 2. Procesar los datos para el calendario
     registrosAsyncValue.whenData((registros) {
+      // SOLO cargar eventos si el mapa está vacío.
+      // Si el provider se invalida, events será limpiado en la función de recarga exitosa.
       if (registros.isNotEmpty && _events.isEmpty) {
         // Mapeamos registros a un mapa de eventos (DateTime -> RegistroDia)
         final newEvents = {
@@ -220,6 +223,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // Botón de Recarga Manual
+          IconButton(
+            icon: const Icon(Icons.refresh, color: primaryColor),
+            onPressed: () {
+              // Limpia el estado local y fuerza la recarga del provider
+              setState(() { _events = {}; });
+              ref.invalidate(currentHabitRegistrosProvider(widget.habito.id));
+              ref.invalidate(habitosProvider); // Recargar también la lista principal por si cambia la mata
+            },
+          ),
           // Botón "Otros días" (Opcional, en el diseño parece un botón para el mes)
           TextButton(
             onPressed: () {
@@ -316,13 +329,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
                       return GestureDetector( // Hacemos cada día con registro clickeable
                         onTap: () {
-                          // Solo navegamos si no es el día actual (el día actual tiene el botón inferior)
-                          if (!isSameDay(day, DateTime.now())) {
-                            _loadDayData(day); // Carga la data del día
-                            _handleDayTap(context); // Navega al detalle
-                          } else {
-                            _loadDayData(day); // Siempre carga la data al seleccionar
-                          }
+                          // Si el día tiene registro, siempre carga y navega
+                          _loadDayData(day); // Carga la data del día
+                          _handleDayTap(context); // Navega al detalle
                         },
                         child: Container(
                           margin: const EdgeInsets.all(4.0),
@@ -361,7 +370,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   _loadDayData(selectedDay);
                   setState(() => _focusedDay = focusedDay);
 
-                  // CORRECCIÓN: Si el día está registrado, navegamos al detalle, incluso si es hoy.
+                  // CORRECCIÓN DE NAVEGACIÓN: Si el día está registrado, navegamos al detalle.
+                  // Esto cubre el día de hoy o cualquier día pasado con registro.
                   if (isRegisteredDay) {
                     // Llama a la navegación después de cargar la data
                     WidgetsBinding.instance.addPostFrameCallback((_) {
