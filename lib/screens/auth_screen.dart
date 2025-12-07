@@ -54,7 +54,34 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  // --- 1. Declarar FocusNodes ---
+  final FocusNode nameFocusNode = FocusNode();
+  final FocusNode emailFocusNode = FocusNode();
+  final FocusNode passwordFocusNode = FocusNode();
+
   bool _isLoading = false;
+
+  // --- Lógica para mover el foco entre campos ---
+  void _fieldFocusChange(
+      BuildContext context, FocusNode currentFocus, FocusNode? nextFocus) {
+    currentFocus.unfocus();
+    if (nextFocus != null) {
+      FocusScope.of(context).requestFocus(nextFocus);
+    }
+  }
+
+  // Limpieza de FocusNodes
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    nameFocusNode.dispose();
+    emailFocusNode.dispose();
+    passwordFocusNode.dispose();
+    super.dispose();
+  }
+
 
   void _showError(dynamic error) {
     // Muestra el error usando un SnackBar (alerta temporal)
@@ -80,6 +107,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   // --- Lógica de Login (Consumo de API) ---
   void _handleLogin() async {
+    // Es llamada automáticamente al presionar 'Done' en el teclado si estamos en Login mode.
+    if (_isLoading) return;
+
     // Validaciones básicas de campos
     if (emailController.text.isEmpty || passwordController.text.isEmpty) {
       return _showError("Por favor, rellena todos los campos.");
@@ -105,6 +135,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   // --- Lógica de Registro (Consumo de API + Login Automático) ---
   void _handleRegister() async {
+    // Es llamada automáticamente al presionar 'Done' en el teclado si estamos en Register mode.
+    if (_isLoading) return;
+
     // Validaciones básicas de campos
     if (nameController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty) {
       return _showError("Por favor, rellena todos los campos.");
@@ -136,11 +169,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     required String hintText,
     required bool isPassword,
     required TextInputType keyboardType,
+    // --- Nuevas propiedades ---
+    required FocusNode focusNode,
+    required TextInputAction textInputAction,
+    VoidCallback? onSubmitted,
   }) {
     return TextField(
       controller: controller,
+      focusNode: focusNode, // Asignar FocusNode
       keyboardType: keyboardType,
       obscureText: isPassword,
+      textInputAction: textInputAction, // Asignar acción del teclado
+      onSubmitted: (_) { // Manejar la pulsación de la acción del teclado
+        onSubmitted?.call();
+      },
       decoration: InputDecoration(
         hintText: hintText,
         fillColor: inputFillColor,
@@ -212,6 +254,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     hintText: 'Nombre',
                     isPassword: false,
                     keyboardType: TextInputType.text,
+                    focusNode: nameFocusNode,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: () => _fieldFocusChange(context, nameFocusNode, emailFocusNode),
                   ),
                   const SizedBox(height: 15),
                 ],
@@ -222,6 +267,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   hintText: 'Correo Electrónico',
                   isPassword: false,
                   keyboardType: TextInputType.emailAddress,
+                  focusNode: emailFocusNode,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: () => _fieldFocusChange(context, emailFocusNode, passwordFocusNode),
                 ),
                 const SizedBox(height: 15),
 
@@ -231,6 +279,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   hintText: 'Contraseña (mínimo 6 caracteres)',
                   isPassword: true,
                   keyboardType: TextInputType.visiblePassword,
+                  focusNode: passwordFocusNode,
+                  // Último campo, la acción es enviar el formulario
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: isLoginMode ? _handleLogin : _handleRegister,
                 ),
                 const SizedBox(height: 20),
 
@@ -275,6 +327,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       nameController.clear();
                       emailController.clear();
                       passwordController.clear();
+
+                      // Quitar el foco de cualquier campo
+                      FocusScope.of(context).unfocus();
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: buttonColor,
