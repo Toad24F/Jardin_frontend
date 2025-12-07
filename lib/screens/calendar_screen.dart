@@ -10,7 +10,7 @@ import 'daily_log_detail_screen.dart'; // Importar la nueva pantalla de detalle
 
 // Colores y Estilos
 const Color primaryColor = Color(0xFF6C4B4B);
-const Color lightBackgroundColor = Color(0xFFEFE8DE);
+const Color lightBackgroundColor = Color(0xFFDBCFB9);
 const Color accentGreen = Color(0xFF7D9C68);
 const Color successColor = Color(0xFF7D9C68); // Verde (Estado 3)
 const Color warningColor = Color(0xFFFFC107); // Amarillo (Estado 2)

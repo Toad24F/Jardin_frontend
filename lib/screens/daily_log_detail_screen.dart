@@ -5,7 +5,7 @@ import 'package:intl/intl.dart'; // Importar intl para formatear la fecha
 
 // Definición de colores principales (para consistencia)
 const Color primaryColor = Color(0xFF6C4B4B);
-const Color lightBackgroundColor = Color(0xFFEFE8DE);
+const Color lightBackgroundColor = Color(0xFFDBCFB9);
 const Color inputFillColor = Colors.white;
 
 // Mapeo de Dificultad para mostrar el texto en lugar del número
