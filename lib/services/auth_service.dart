@@ -240,6 +240,19 @@ class AuthService {
       throw e.response?.data['message'] ?? 'Error al crear el hábito.';
     }
   }
+
+  // NUEVO: Elimina un hábito por su ID (DELETE /habitos/:id)
+  Future<void> deleteHabito(String habitId) async {
+    try {
+      await _dio.delete(
+        '$habitosUrl/$habitId',
+        options: _getAuthOptions(), // Incluye el token
+      );
+    } on DioException catch (e) {
+      // Manejar el caso donde el backend devuelve un mensaje de error
+      throw e.response?.data['message'] ?? 'Error al eliminar el hábito.';
+    }
+  }
 }
 
 // --- Providers de Riverpod (Se mantienen igual) ---

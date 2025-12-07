@@ -15,6 +15,7 @@ const Color accentGreen = Color(0xFF7D9C68);
 const Color successColor = Color(0xFF7D9C68); // Verde (Estado 3)
 const Color warningColor = Color(0xFFFFC107); // Amarillo (Estado 2)
 const Color failureColor = Color(0xFFDC3545); // Rojo (Estado 1)
+const Color todayDotColor = Colors.blue; // NUEVO: Azul para el indicador de "Hoy"
 
 // Proveedor de Registros para el Calendario
 final currentHabitRegistrosProvider = FutureProvider.family<List<RegistroDia>, String>((ref, habitId) async {
@@ -165,6 +166,65 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
   }
 
+  // NUEVO: Método para manejar la eliminación del hábito
+  void _deleteHabit(BuildContext context) async {
+    // Diálogo de confirmación
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirmar Eliminación'),
+          content: Text(
+              '¿Estás seguro de que deseas eliminar el hábito "${widget.habito.nombreHabito}"? Esta acción es irreversible.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar', style: TextStyle(color: primaryColor)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: failureColor, // Rojo para eliminar
+              ),
+              child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      // Proceder con la eliminación
+      final authService = ref.read(authServiceProvider);
+      try {
+        // Llama a la nueva función del servicio
+        await authService.deleteHabito(widget.habito.id);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Hábito eliminado con éxito.'),
+                backgroundColor: successColor),
+          );
+
+          // Invalida el provider de hábitos para que HomeScreen se actualice
+          ref.invalidate(habitosProvider);
+
+          // Navega de vuelta a HomeScreen
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Error al eliminar el hábito: $e'),
+                backgroundColor: failureColor),
+          );
+        }
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -232,14 +292,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ref.invalidate(currentHabitRegistrosProvider(widget.habito.id));
               ref.invalidate(habitosProvider); // Recargar también la lista principal por si cambia la mata
             },
+            tooltip: 'Recargar registros',
           ),
-          // Botón "Otros días" (Opcional, en el diseño parece un botón para el mes)
-          TextButton(
-            onPressed: () {
-              // TODO: Lógica para ver otros meses si no hay restricción
-            },
-            child: Text('Otros días', style: TextStyle(color: primaryColor)),
-          )
+          // NUEVO: Botón de Eliminación (reemplaza 'Otros días')
+          IconButton(
+            icon: const Icon(Icons.delete_forever, color: failureColor),
+            onPressed: () => _deleteHabit(context),
+            tooltip: 'Eliminar Hábito',
+          ),
+          const SizedBox(width: 10),
         ],
       ),
       body: SingleChildScrollView(
@@ -321,6 +382,48 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
                 // ------------------ TUS EVENTOS (bolitas de colores) ------------------
                 calendarBuilders: CalendarBuilders(
+                  // NUEVO: Builder para mostrar el punto azul en el día de hoy
+                  todayBuilder: (context, day, focusedDay) {
+                    // Solo si es el día de hoy y no tiene un registro asociado, mostramos el punto
+                    final events = _getEventsForDay(day);
+                    if (!isSameDay(day, DateTime.now()) || events.isNotEmpty) {
+                      return null; // Permite que el builder por defecto de TableCalendar tome el control
+                    }
+
+                    // Renderizamos el día de hoy (sin evento) con el punto azul.
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Contenido del día (número)
+                        Container(
+                          margin: const EdgeInsets.all(4.0),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            // Replicamos la decoración de 'today' de CalendarStyle para mantener el círculo suave
+                            color: primaryColor.withOpacity(0.25),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '${day.day}',
+                            // Usamos el estilo predeterminado para el texto del día.
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF6A4032),
+                            ),
+                          ),
+                        ),
+                        // Pequeño punto azul arriba del número
+                        const Positioned(
+                          top: 8, // Ajuste para que quede justo arriba
+                          child: CircleAvatar(
+                            radius: 3,
+                            backgroundColor: todayDotColor,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+
                   defaultBuilder: (context, day, focusedDay) {
                     final events = _getEventsForDay(day);
                     if (events.isNotEmpty) {
@@ -407,9 +510,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ),
     );
   }
-
-  // WIDGET ELIMINADO: _buildDailyReport ya no se necesita
-
 
   // Widget de utilidad para mostrar info del día
   Widget _buildInfoRow(String label, String value, {Color? color}) {
