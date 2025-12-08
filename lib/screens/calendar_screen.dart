@@ -8,14 +8,14 @@ import '../services/auth_service.dart';
 import 'log_day_screen.dart';
 import 'daily_log_detail_screen.dart'; // Importar la nueva pantalla de detalle
 
-// Colores y Estilos
-const Color primaryColor = Color(0xFF6C4B4B);
-const Color lightBackgroundColor = Color(0xFFDBCFB9);
-const Color accentGreen = Color(0xFF7D9C68);
+// Se eliminan las constantes de color fijo (primaryColor, lightBackgroundColor, accentGreen)
+// que definen el tema de la aplicación.
+// Mantenemos solo los colores que representan el ESTADO, ya que son valores semánticos
+// que deben ser consistentes independientemente del tema (e.g., el rojo siempre es 'Failure').
 const Color successColor = Color(0xFF7D9C68); // Verde (Estado 3)
 const Color warningColor = Color(0xFFFFC107); // Amarillo (Estado 2)
 const Color failureColor = Color(0xFFDC3545); // Rojo (Estado 1)
-const Color todayDotColor = Colors.blue; // NUEVO: Azul para el indicador de "Hoy"
+const Color todayDotColor = Colors.blue; // Azul para el indicador de "Hoy"
 
 // Proveedor de Registros para el Calendario
 final currentHabitRegistrosProvider = FutureProvider.family<List<RegistroDia>, String>((ref, habitId) async {
@@ -24,7 +24,7 @@ final currentHabitRegistrosProvider = FutureProvider.family<List<RegistroDia>, S
   return authService.getRegistros(habitId);
 });
 
-// Modelo para los datos del día seleccionado
+// Modelo para los datos del día seleccionado (Se mantiene igual)
 class DayInfo {
   final String date;
   final int vecesRealizadas;
@@ -105,9 +105,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   // Genera el widget de la barra de progreso de estado
-  Widget _buildStatusBar(List<RegistroDia> registros) {
+  Widget _buildStatusBar(BuildContext context, List<RegistroDia> registros) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final onBackground = Theme.of(context).colorScheme.onBackground;
+
     if (registros.isEmpty) {
-      return const Center(child: Text("No hay datos para calcular el progreso.", style: TextStyle(color: primaryColor)));
+      return Center(child: Text("No hay datos para calcular el progreso.", style: TextStyle(color: primaryColor)));
     }
 
     // Contadores para cada estado
@@ -132,7 +135,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('¿Cómo te ha ido?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
+        Text('¿Cómo te ha ido?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: onBackground)),
         const SizedBox(height: 10),
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
@@ -168,6 +171,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   // NUEVO: Método para manejar la eliminación del hábito
   void _deleteHabit(BuildContext context) async {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     // Diálogo de confirmación
     final confirmed = await showDialog<bool>(
       context: context,
@@ -179,7 +184,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar', style: TextStyle(color: primaryColor)),
+              child: Text('Cancelar', style: TextStyle(color: primaryColor)),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -228,6 +233,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final cardColor = theme.colorScheme.surface;
+    final onBackground = theme.colorScheme.onBackground;
+    final accentGreen = theme.colorScheme.secondary;
+
     final TextStyle appBarTitleStyle = TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor);
 
     // 1. Observamos los registros del hábito
@@ -266,26 +277,26 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     // Calcula el porcentaje de la barra (por ahora, solo si los datos están listos)
     final statusBar = registrosAsyncValue.when(
-      data: (registros) => _buildStatusBar(registros),
-      loading: () => const Center(child: Text("Calculando progreso...")),
-      error: (e, s) => const Center(child: Text("Error al cargar datos de progreso.")),
+      data: (registros) => _buildStatusBar(context, registros),
+      loading: () => Center(child: Text("Calculando progreso...", style: TextStyle(color: primaryColor))),
+      error: (e, s) => Center(child: Text("Error al cargar datos de progreso.", style: TextStyle(color: primaryColor))),
     );
 
 
     return Scaffold(
-      backgroundColor: lightBackgroundColor,
+      // Ya no tiene backgroundColor fijo, usa theme.scaffoldBackgroundColor
       appBar: AppBar(
         title: Text('Tu mes: ${widget.habito.nombreHabito}', style: appBarTitleStyle),
-        backgroundColor: lightBackgroundColor,
+        // Ya no tiene backgroundColor fijo, usa theme.appBarTheme
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: primaryColor),
+          icon: Icon(Icons.arrow_back_ios, color: primaryColor),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           // Botón de Recarga Manual
           IconButton(
-            icon: const Icon(Icons.refresh, color: primaryColor),
+            icon: Icon(Icons.refresh, color: primaryColor),
             onPressed: () {
               // Limpia el estado local y fuerza la recarga del provider
               setState(() { _events = {}; });
@@ -312,9 +323,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               margin: const EdgeInsets.only(bottom: 20),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFF7EEDC),        // crema vintage
+                color: cardColor,        // Usa el color de la tarjeta del tema (surface)
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF6A4032), width: 1.4), // borde café
+                border: Border.all(color: primaryColor, width: 1.4), // borde con color primario
               ),
               child: TableCalendar(
                 focusedDay: _focusedDay,
@@ -328,51 +339,51 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   titleCentered: true,
                   titleTextFormatter: (date, locale) =>
                   '${date.dayjsMonthName().toUpperCase()} ${date.year}',
-                  titleTextStyle: const TextStyle(
+                  titleTextStyle: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF6A4032), // café vintage
+                    color: primaryColor, // Color primario
                   ),
 
                   // Flechas estilo discreto (parecido a la imagen)
-                  leftChevronIcon: const Icon(Icons.arrow_back_ios, color: Color(0xFF6A4032)),
-                  rightChevronIcon: const Icon(Icons.arrow_forward_ios, color: Color(0xFF6A4032)),
+                  leftChevronIcon: Icon(Icons.arrow_back_ios, color: primaryColor),
+                  rightChevronIcon: Icon(Icons.arrow_forward_ios, color: primaryColor),
                   headerPadding: const EdgeInsets.only(top: 4, bottom: 6),
                 ),
 
                 // ------------------ DIAS DE LA SEMANA ------------------
-                daysOfWeekStyle: const DaysOfWeekStyle(
+                daysOfWeekStyle: DaysOfWeekStyle(
                   weekdayStyle: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF6A4032), // café
+                    color: primaryColor, // Color primario
                   ),
                   weekendStyle: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF6A4032),
+                    color: primaryColor,
                   ),
                 ),
 
                 // ------------------ ESTILOS DEL CALENDARIO ------------------
                 calendarStyle: CalendarStyle(
-                  defaultTextStyle: const TextStyle(color: Color(0xFF6A4032), fontWeight: FontWeight.w600),
-                  weekendTextStyle: const TextStyle(color: Color(0xFF6A4032)),
+                  defaultTextStyle: TextStyle(color: onBackground, fontWeight: FontWeight.w600), // Texto general
+                  weekendTextStyle: TextStyle(color: onBackground),
                   outsideDaysVisible: false,
 
                   todayDecoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.25),  // rojito suave como la imagen
+                    color: primaryColor.withOpacity(0.25),  // Opacidad del color primario
                     shape: BoxShape.circle,
                   ),
 
-                  selectedDecoration: const BoxDecoration(
-                    color: primaryColor, // rojo sólido
+                  selectedDecoration: BoxDecoration(
+                    color: primaryColor, // Color primario sólido
                     shape: BoxShape.circle,
                   ),
 
-                  todayTextStyle: const TextStyle(
+                  todayTextStyle: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF6A4032),
+                    color: onBackground, // Texto en el círculo "Hoy"
                   ),
                   selectedTextStyle: const TextStyle(
                     color: Colors.white,
@@ -406,9 +417,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           child: Text(
                             '${day.day}',
                             // Usamos el estilo predeterminado para el texto del día.
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF6A4032),
+                              color: onBackground,
                             ),
                           ),
                         ),
@@ -503,7 +514,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               padding: const EdgeInsets.only(bottom: 20.0),
               // El botón ahora siempre se muestra, pero la lógica interna
               // de `_buildLogButton` decidirá si es clickeable.
-              child: _buildLogButton(isToday, isTodayRegistered),
+              child: _buildLogButton(context, isToday, isTodayRegistered),
             ),
           ],
         ),
@@ -511,8 +522,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  // Widget de utilidad para mostrar info del día
+  // Widget de utilidad para mostrar info del día (no usado actualmente pero mantenido por si acaso)
   Widget _buildInfoRow(String label, String value, {Color? color}) {
+    // Usamos onBackground para el texto
+    final onBackground = Theme.of(context).colorScheme.onBackground;
+
     const TextStyle descriptionTextStyle = TextStyle(
       fontSize: 16,
       color: Colors.grey,
@@ -523,16 +537,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: descriptionTextStyle.copyWith(fontWeight: FontWeight.bold, color: Colors.black)),
-          Text(value, style: descriptionTextStyle.copyWith(color: color ?? Colors.black)),
+          Text(label, style: descriptionTextStyle.copyWith(fontWeight: FontWeight.bold, color: onBackground)),
+          Text(value, style: descriptionTextStyle.copyWith(color: color ?? onBackground)),
         ],
       ),
     );
   }
 
   // Widget para el botón inferior
-  Widget _buildLogButton(bool isToday, bool isRegistered) {
-    // Lógica original de ocultamiento eliminada. El botón siempre se muestra.
+  Widget _buildLogButton(BuildContext context, bool isToday, bool isRegistered) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final accentGreen = Theme.of(context).colorScheme.secondary;
+    final onCardColor = Theme.of(context).colorScheme.onSurface; // Texto para botones con color primario/secundario
 
     // Si no es hoy, mostramos el botón pero deshabilitado o con otro texto
     String text = 'Registrar Día';
@@ -575,7 +591,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         } : null, // Deshabilita si no es clickeable
         style: ElevatedButton.styleFrom(
           backgroundColor: btnColor,
-          foregroundColor: const Color(0xFFF7EEDC), // Color de texto claro para botones oscuros
+          foregroundColor: onCardColor, // Color de texto dinámico
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
