@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 
-// Definición de colores principales
-const Color primaryColor = Color(0xFF6C4B4B);
-const Color lightBackgroundColor = Color(0xFFDBCFB9);
-const Color inputFillColor = Colors.white;
+// Se eliminan las constantes de color fijo.
+// inputFillColor se leerá desde theme.colorScheme.surface (cardColor)
 
 class LogDayScreen extends ConsumerStatefulWidget {
   final String habitoId;
@@ -74,7 +72,10 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
   }
 
   // Widget para el control de veces realizadas (spinner)
-  Widget _buildFrequencyControl() {
+  Widget _buildFrequencyControl(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final onBackground = Theme.of(context).colorScheme.onBackground;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -86,13 +87,20 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: [
-              Text('$_vecesRealizadas', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              Text(
+                '$_vecesRealizadas',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: onBackground, // Color de texto dinámico
+                ),
+              ),
               Column(
                 children: [
                   SizedBox(
                     height: 25,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_drop_up, size: 25, color: primaryColor),
+                      icon: Icon(Icons.arrow_drop_up, size: 25, color: primaryColor),
                       padding: EdgeInsets.zero,
                       onPressed: () {
                         setState(() {
@@ -104,7 +112,7 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
                   SizedBox(
                     height: 25,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_drop_down, size: 25, color: primaryColor),
+                      icon: Icon(Icons.arrow_drop_down, size: 25, color: primaryColor),
                       padding: EdgeInsets.zero,
                       onPressed: () {
                         setState(() {
@@ -125,18 +133,24 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
   }
 
   // Estilo común para los títulos de sección
-  final TextStyle sectionTitleStyle = TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.bold,
-    color: primaryColor,
-  );
+  TextStyle _sectionTitleStyle(BuildContext context) {
+    return TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+      color: Theme.of(context).colorScheme.onBackground, // Texto en el fondo (negro o blanco)
+    );
+  }
 
   // Estilo común para los campos de texto
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(BuildContext context, String hint) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final cardColor = Theme.of(context).colorScheme.surface;
+    final onBackground = Theme.of(context).colorScheme.onBackground;
+
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.grey),
-      fillColor: inputFillColor,
+      hintStyle: TextStyle(color: onBackground.withOpacity(0.5)),
+      fillColor: cardColor, // Color de superficie/tarjeta (blanco o gris oscuro)
       filled: true,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
@@ -148,7 +162,7 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: primaryColor, width: 2),
+        borderSide: BorderSide(color: primaryColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
     );
@@ -156,15 +170,19 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final cardColor = Theme.of(context).colorScheme.surface;
+    final onBackground = Theme.of(context).colorScheme.onBackground;
+
     return Scaffold(
-      backgroundColor: lightBackgroundColor,
+      // Ya no tiene backgroundColor fijo, usa theme.scaffoldBackgroundColor
       appBar: AppBar(
-        backgroundColor: lightBackgroundColor,
+        // Los colores se heredan del theme.appBarTheme
         elevation: 0,
-        title: Text('Registra tu día', style: sectionTitleStyle.copyWith(fontSize: 20)),
+        title: Text('Registra tu día', style: _sectionTitleStyle(context).copyWith(fontSize: 20, color: primaryColor)),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: primaryColor),
+          icon: Icon(Icons.arrow_back_ios, color: primaryColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -179,19 +197,20 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('¿Cuántas veces lo hiciste?', style: sectionTitleStyle),
-                  _buildFrequencyControl(),
+                  Text('¿Cuántas veces lo hiciste?', style: _sectionTitleStyle(context)),
+                  _buildFrequencyControl(context),
                 ],
               ),
               const SizedBox(height: 30),
 
               // --- 2. ¿Cómo te sentiste al hacerlo? (Sentimiento) ---
-              Text('¿Cómo te sentiste al hacerlo?', style: sectionTitleStyle),
+              Text('¿Cómo te sentiste al hacerlo?', style: _sectionTitleStyle(context)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _sentimientoController,
                 maxLines: 3,
-                decoration: _inputDecoration('Escribe como te sentiste aquí...'),
+                style: TextStyle(color: onBackground), // Color de texto dinámico
+                decoration: _inputDecoration(context, 'Escribe como te sentiste aquí...'),
                 validator: (value) {
                   // No requiere validación porque es opcional
                   return null;
@@ -200,12 +219,13 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
               const SizedBox(height: 30),
 
               // --- 3. ¿Por qué lo hiciste? (Motivo) ---
-              Text('¿Por qué lo hiciste?', style: sectionTitleStyle),
+              Text('¿Por qué lo hiciste?', style: _sectionTitleStyle(context)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _motivoController,
                 maxLines: 3,
-                decoration: _inputDecoration('Escribe por qué lo hiciste aquí...'),
+                style: TextStyle(color: onBackground), // Color de texto dinámico
+                decoration: _inputDecoration(context, 'Escribe por qué lo hiciste aquí...'),
                 validator: (value) {
                   // No requiere validación porque es opcional
                   return null;
@@ -214,23 +234,25 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
               const SizedBox(height: 30),
 
               // --- 4. ¿Qué tan difícil fue hoy? (Dificultad) ---
-              Text('¿Qué tan difícil fue hoy?', style: sectionTitleStyle),
+              Text('¿Qué tan difícil fue hoy?', style: _sectionTitleStyle(context)),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12.0),
                 decoration: BoxDecoration(
-                  color: inputFillColor,
+                  color: cardColor, // Fondo del Dropdown dinámico
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: primaryColor.withOpacity(0.5)),
                 ),
                 child: DropdownButtonFormField<int>(
                   decoration: const InputDecoration(border: InputBorder.none),
                   value: _dificultad,
-                  hint: const Text('Selecciona la dificultad'),
+                  hint: Text('Selecciona la dificultad', style: TextStyle(color: onBackground.withOpacity(0.5))),
+                  style: TextStyle(color: onBackground), // Color del texto seleccionado
+                  dropdownColor: cardColor, // Color del menú desplegable
                   items: _dificultadOptions.map((option) {
                     return DropdownMenuItem<int>(
                       value: option['value'],
-                      child: Text(option['label']),
+                      child: Text(option['label'], style: TextStyle(color: onBackground)), // Color de las opciones
                     );
                   }).toList(),
                   onChanged: (int? newValue) {
@@ -254,13 +276,7 @@ class _LogDayScreenState extends ConsumerState<LogDayScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveLog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+                  // Los colores del botón se heredan de theme.elevatedButtonTheme
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('Guardar', style: TextStyle(fontSize: 18)),

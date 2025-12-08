@@ -590,8 +590,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           }
         } : null, // Deshabilita si no es clickeable
         style: ElevatedButton.styleFrom(
-          backgroundColor: btnColor,
-          foregroundColor: onCardColor, // Color de texto dinámico
+          backgroundColor: btnColor, // Color de texto dinámico
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
