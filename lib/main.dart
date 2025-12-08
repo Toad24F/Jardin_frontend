@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'screens/auth_screen.dart'; // Importa tu pantalla
-import 'screens/home_screen.dart'; // Importa la nueva pantalla principal
-import 'services/auth_service.dart'; // Importa tus servicios
+import 'screens/auth_screen.dart';
+import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   // 1. Asegura que Flutter esté inicializado antes de llamar a funciones nativas
@@ -24,22 +24,80 @@ void main() async {
   );
 }
 
+// --- Definición de Colores de la Paleta ---
+// Colores principales de tu tema (basados en los archivos existentes)
+const Color primaryColor = Color(0xFF6C4B4B); // Marrón/Rojizo oscuro
+const Color accentGreen = Color(0xFF7D9C68);  // Verde de acento
+const Color lightBackgroundColor = Color(0xFFDBCFB9); // Fondo claro (Crema)
+const Color darkPrimaryColor = Color(0xFFDBCFB9); // Usamos el crema como acento en el modo oscuro
+const Color darkBackgroundColor = Color(0xFF333333); // Fondo oscuro (Gris oscuro)
+const Color darkCardColor = Color(0xFF424242); // Color de tarjetas/elementos en modo oscuro
+
+// --- Definición de Temas ---
+final ThemeData lightTheme = ThemeData(
+  brightness: Brightness.light,
+  primaryColor: primaryColor,
+  colorScheme: ColorScheme.light(
+    primary: primaryColor,
+    secondary: accentGreen,
+    background: lightBackgroundColor, // Color de fondo principal
+    surface: Colors.white,           // Color de tarjetas y superficies
+    onPrimary: Colors.white,
+    onBackground: Colors.black87,
+  ),
+  scaffoldBackgroundColor: lightBackgroundColor,
+  appBarTheme: const AppBarTheme(
+    backgroundColor: lightBackgroundColor,
+    elevation: 0,
+    iconTheme: IconThemeData(color: primaryColor),
+    titleTextStyle: TextStyle(color: primaryColor, fontSize: 20, fontWeight: FontWeight.bold),
+  ),
+  // Establece el color de los botones elevados
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: primaryColor,
+      foregroundColor: Colors.white,
+    ),
+  ),
+  visualDensity: VisualDensity.adaptivePlatformDensity,
+);
+
+final ThemeData darkTheme = ThemeData(
+  brightness: Brightness.dark,
+  primaryColor: darkPrimaryColor, // El color primario en modo oscuro
+  colorScheme: ColorScheme.dark(
+    primary: darkPrimaryColor,
+    secondary: accentGreen,
+    background: darkBackgroundColor,
+    surface: darkCardColor,
+    onPrimary: Colors.black,
+    onBackground: Colors.white70,
+  ),
+  scaffoldBackgroundColor: darkBackgroundColor,
+  appBarTheme: AppBarTheme(
+    backgroundColor: darkBackgroundColor,
+    elevation: 0,
+    iconTheme: const IconThemeData(color: darkPrimaryColor),
+    titleTextStyle: TextStyle(color: darkPrimaryColor, fontSize: 20, fontWeight: FontWeight.bold),
+  ),
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: darkPrimaryColor,
+      foregroundColor: Colors.black, // Texto oscuro en botón claro
+    ),
+  ),
+  visualDensity: VisualDensity.adaptivePlatformDensity,
+);
+// -------------------------
+
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
-  // Color de fondo para que sea consistente
-  static const Color backgroundColor = Color(0xFFDBCFB9);
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // El AuthService ya está listo para ser usado porque SharedPreferences
-    // se resolvió en main() y se inyectó de forma síncrona.
     final authService = ref.watch(authServiceProvider);
-
-    // Obtenemos el token guardado (si existe)
     final token = authService.getToken();
 
-    // Determinamos la pantalla de inicio
     final Widget initialScreen = (token != null && token.isNotEmpty)
         ? const HomeScreen() // Si hay token, va a Home
         : const AuthScreen(); // Si no hay token, va a Login/Register
@@ -47,12 +105,12 @@ class MyApp extends ConsumerWidget {
     return MaterialApp(
       title: 'Jardín de Hábitos',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        // Tema general para la app
-        primarySwatch: Colors.brown,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        scaffoldBackgroundColor: backgroundColor,
-      ),
+
+      // --- CONFIGURACIÓN DE TEMA AUTOMÁTICA ---
+      theme: lightTheme,           // Tema usado por defecto (Modo Claro)
+      darkTheme: darkTheme,         // Tema usado cuando el sistema está en Modo Oscuro
+      themeMode: ThemeMode.system, // Usa la configuración de brillo del sistema operativo
+
       // Navegamos a la pantalla inicial determinada por el estado de autenticación
       home: initialScreen,
     );

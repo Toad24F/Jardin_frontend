@@ -9,17 +9,18 @@ import '../providers/habitos_provider.dart';
 import '../services/local_storage_service.dart';
 import 'calendar_screen.dart'; // Importar nuevo servicio local
 
-// Definición de colores principales
-const Color primaryColor = Color(0xFF6C4B4B);
-const Color lightBackgroundColor = Color(0xFFDBCFB9);
-const Color accentGreen = Color(0xFF7D9C68);
+// Se eliminan las constantes de color fijas y se reemplazan por referencias al tema.
 
-// Para mantener la consistencia del título
-final TextStyle appTitleStyle = TextStyle(
-  fontSize: 32,
-  fontWeight: FontWeight.bold,
-  color: primaryColor,
-);
+// Se mantiene el estilo de texto como una función que acepta el tema (o contexto)
+// para poder acceder a los colores dinámicamente.
+TextStyle getAppTitleStyle(BuildContext context) {
+  final primaryColor = Theme.of(context).colorScheme.primary;
+  return TextStyle(
+    fontSize: 32,
+    fontWeight: FontWeight.bold,
+    color: primaryColor,
+  );
+}
 
 // Cambiamos a ConsumerStatefulWidget para manejar el estado de posición
 class HomeScreen extends ConsumerStatefulWidget {
@@ -52,8 +53,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (_isInitialized || habitos.isEmpty) return;
 
     // 1. Intentar cargar posiciones guardadas localmente
-    // NOTA IMPORTANTE: Si el LocalStorageService no usa el UserID como parte de su clave
-    // para guardar las posiciones, las posiciones del usuario anterior se cargarán aquí.
     final savedPositions = localStorageService.loadPositions();
     final Map<String, Offset> initialPositions = {};
 
@@ -110,17 +109,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Función para construir un ítem del menú lateral
   Widget _buildDrawerItem({
+    required BuildContext context, // Necesario para Theme
     required IconData icon,
     required String title,
     VoidCallback? onTap,
-    Color color = Colors.white,
+    // Eliminamos el color fijo, siempre será blanco o el color de acento.
   }) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    // Color de texto e ícono dinámico para el Drawer (blanco en claro, acento en oscuro)
+    final itemColor = isDarkMode ? theme.colorScheme.primary : primaryTextColor;
+
     return ListTile(
-      leading: Icon(icon, color: color),
+      leading: Icon(icon, color: itemColor),
       title: Text(
         title,
         style: TextStyle(
-          color: color,
+          color: itemColor,
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),
@@ -131,6 +136,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Widget de la Maceta Draggable
   Widget _buildHabitMata(BuildContext context, Habito habito) {
+    // Leemos el color primario del tema para el texto
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     // 1. Obtener la posición actual
     Offset position =
         _habitPositions[habito.id] ??
@@ -186,14 +194,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               width: 120,
               errorBuilder: (context, error, stackTrace) {
                 // Fallback si la imagen (1.png a 15.png) no se encuentra
-                return const Icon(Icons.park, size: 100, color: primaryColor);
+                return Icon(Icons.park, size: 100, color: primaryColor);
               },
             ),
             const SizedBox(height: 5),
             Text(
               habito.nombreHabito,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: primaryColor,
                 fontWeight: FontWeight.bold,
               ),
@@ -223,13 +231,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final localStorageService = ref.read(
       localStorageServiceProvider,
     ); // Nuevo servicio
+
+    // Colores dinámicos del tema
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final accentGreen = Theme.of(context).colorScheme.secondary;
+    final onBackground = Theme.of(context).colorScheme.background;
+
     final String userName = authService.getUserName() ?? 'Usuario';
     final String userEmail = authService.getUserEmail() ?? 'Correo@gmail.com';
     final habitosAsyncValue = ref.watch(habitosProvider);
-    final TextStyle homeTitleStyle = appTitleStyle.copyWith(
+
+    // Estilo del título adaptado al tema
+    final TextStyle homeTitleStyle = getAppTitleStyle(context).copyWith(
       fontSize: 24,
-      color: primaryColor,
+      color: primaryColor, // Usamos el color primario del tema
     );
+
 
     void navigateToAddHabit() {
       Navigator.of(context)
@@ -243,8 +260,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await authService.saveToken('');
 
       // FIX: Al cerrar sesión, limpiamos el estado local de la posición.
-      // Esto asegura que la próxima cuenta que inicie sesión no cargue las
-      // posiciones de la cuenta anterior, sino las suyas o las por defecto.
       await localStorageService.savePositions({});
 
       // También limpiamos el estado local en el componente
@@ -266,8 +281,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Inicialización de posiciones al obtener los datos la primera vez
     habitosAsyncValue.whenData((habitos) {
       if (!_isInitialized && habitos.isNotEmpty) {
-        // En este punto, si el LocalStorageService NO usa una clave única por usuario,
-        // todavía cargará las posiciones del usuario anterior.
         _initializePositions(habitos, localStorageService);
       } else if (habitos.isEmpty && _habitPositions.isNotEmpty) {
         // Limpia posiciones si el usuario eliminó todos los hábitos
@@ -285,16 +298,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     return Scaffold(
-      backgroundColor: lightBackgroundColor,
+      // El color de fondo lo toma del theme.scaffoldBackgroundColor
 
-      // --- AppBar (Se mantiene igual) ---
+      // --- AppBar (Adaptada al tema) ---
       appBar: AppBar(
         title: Text('Jardín de Hábitos', style: homeTitleStyle),
-        backgroundColor: lightBackgroundColor,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: primaryColor, size: 30),
+        // Los colores de AppBar se heredan de theme.appBarTheme
+        iconTheme: IconThemeData(color: primaryColor, size: 30), // Aseguramos el color de los íconos (siempre primary)
         actions: [
-          // Nuevo botón para refrescar manualmente los hábitos
+          // Botones usan el color del IconTheme de AppBar
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(habitosProvider),
@@ -309,15 +321,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
 
-      // --- Menú Lateral (Se mantiene igual) ---
+      // --- Menú Lateral (Adaptado al tema) ---
       drawer: Drawer(
         child: Container(
-          color: primaryColor,
+          color: onBackground, // El Drawer siempre usa el color primario (primaryColor) como fondo.
           child: ListView(
             padding: EdgeInsets.zero,
             children: <Widget>[
               DrawerHeader(
-                decoration: BoxDecoration(color: primaryColor),
+                // Fondo del header es el mismo que el Drawer
+                decoration: BoxDecoration(color: onBackground),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -327,8 +340,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         'https://placehold.co/100x100/FFFFFF/000000?text=U',
                       ),
                     ),
-                    SizedBox(height: 10),
-                    // Usamos el nombre real
+                    const SizedBox(height: 10),
+                    // Usamos el nombre real (Texto siempre blanco)
                     Text(
                       userName,
                       style: const TextStyle(
@@ -337,11 +350,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    // Usamos el correo real
+                    // Usamos el correo real (Texto en gris suave)
                     Text(
                       userEmail,
                       style: const TextStyle(
-                        color: Color(0xFFC7B1A5),
+                        color: primaryTextColor, // Color fijo que contrasta
                         fontSize: 14,
                       ),
                     ),
@@ -350,11 +363,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
               _buildDrawerItem(
+                context: context,
                 icon: Icons.home,
                 title: 'Inicio',
                 onTap: () => Navigator.pop(context),
               ),
               _buildDrawerItem(
+                context: context,
                 icon: Icons.add_circle_outline,
                 title: 'Registrar Hábito',
                 onTap: () {
@@ -364,6 +379,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
               _buildDrawerItem(
+                context: context,
                 icon: Icons.logout,
                 title: 'Cerrar sesión',
                 onTap: logout,
@@ -379,7 +395,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           Expanded(
             child: habitosAsyncValue.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => Center(child: CircularProgressIndicator(color: primaryColor)),
 
               error: (e, s) {
                 final isTokenNotFoundError = e.toString().contains('Token JWT no encontrado');
@@ -397,7 +413,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   });
 
                   // Mostramos un indicador de carga mientras se reintenta automáticamente.
-                  return const Center(
+                  return Center(
                     child: CircularProgressIndicator(color: primaryColor),
                   );
                 }
@@ -405,7 +421,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // Lógica de error original para 401
                 if (e is DioException && e.response?.statusCode == 401) {
                   WidgetsBinding.instance.addPostFrameCallback((_) => logout());
-                  return const Center(
+                  return Center(
                     child: Text(
                       "Sesión expirada. Redirigiendo...",
                       style: TextStyle(color: primaryColor),
@@ -440,7 +456,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           '¡Aún no tienes hábitos registrados!',
                           style: TextStyle(fontSize: 18, color: primaryColor),
                         ),

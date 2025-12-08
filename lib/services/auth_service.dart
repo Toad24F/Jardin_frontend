@@ -6,7 +6,7 @@ import '../models/habito.dart';
 import '../models/registro_dia.dart';
 
 // --- Constantes de la API ---
-const String baseUrl = 'http://192.168.100.40:3000';
+const String baseUrl = 'http://192.168.100.25:3000';
 const String loginUrl = '$baseUrl/auth/login';
 const String registerUrl = '$baseUrl/usuarios';
 const String habitosUrl = '$baseUrl/habitos';

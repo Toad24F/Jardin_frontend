@@ -9,37 +9,8 @@ enum AuthMode { login, register }
 // Provider para el modo de autenticación, por defecto es Login
 final authModeProvider = StateProvider<AuthMode>((ref) => AuthMode.login);
 
-// --- Colores y Estilos ---
-const Color primaryTextColor = Color(0xFF6C4B4B); // Color rojizo oscuro
-const Color backgroundColor = Color(0xFFEFE8DE); // Color de fondo claro
-const Color buttonColor = Colors.black;
-const Color buttonTextColor = Colors.white;
-const Color inputFillColor = Colors.white;
-
-final TextStyle appTitleStyle = TextStyle(
-  fontSize: 32,
-  fontWeight: FontWeight.bold,
-  color: primaryTextColor,
-  // fontFamily: 'Pacifico', // Descomenta si usas la fuente Pacifico
-);
-
-final TextStyle sectionTitleStyle = TextStyle(
-  fontSize: 22,
-  fontWeight: FontWeight.bold,
-  color: Colors.black,
-);
-
-final TextStyle descriptionTextStyle = TextStyle(
-  fontSize: 16,
-  color: Colors.grey[700],
-);
-
-final TextStyle termsTextStyle = TextStyle(
-  fontSize: 12,
-  color: Colors.grey[600],
-);
-// -------------------------
-
+// --- Colores y Estilos (Ahora son dinámicos) ---
+// NOTA: Los colores primarios y de fondo deben leerse desde el tema.
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -165,6 +136,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   // Widget de utilidad para campos de texto
   Widget _buildInputField({
+    required BuildContext context, // Necesitamos el contexto para el tema
     required TextEditingController controller,
     required String hintText,
     required bool isPassword,
@@ -174,6 +146,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     required TextInputAction textInputAction,
     VoidCallback? onSubmitted,
   }) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
+
     return TextField(
       controller: controller,
       focusNode: focusNode, // Asignar FocusNode
@@ -183,9 +159,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       onSubmitted: (_) { // Manejar la pulsación de la acción del teclado
         onSubmitted?.call();
       },
+      style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
       decoration: InputDecoration(
         hintText: hintText,
-        fillColor: inputFillColor,
+        hintStyle: TextStyle(color: isDarkMode ? primaryColor.withOpacity(0.5) : Colors.grey),
+        fillColor: isDarkMode ? theme.colorScheme.surface : Colors.white,
         filled: true,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -200,6 +178,31 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Widget build(BuildContext context) {
     final authMode = ref.watch(authModeProvider);
     final isLoginMode = authMode == AuthMode.login;
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
+    // Estilos dinámicos
+    final appTitleStyle = TextStyle(
+      fontSize: 32,
+      fontWeight: FontWeight.bold,
+      color: primaryColor,
+    );
+
+    final sectionTitleStyle = TextStyle(
+      fontSize: 22,
+      fontWeight: FontWeight.bold,
+      color: theme.colorScheme.onBackground,
+    );
+
+    final descriptionTextStyle = TextStyle(
+      fontSize: 16,
+      color: theme.colorScheme.onBackground.withOpacity(0.7),
+    );
+
+    final termsTextStyle = TextStyle(
+      fontSize: 12,
+      color: theme.colorScheme.onBackground.withOpacity(0.6),
+    );
 
     // --- Textos dinámicos ---
     final titleText = isLoginMode ? 'Inicia sesión con tu cuenta' : 'Crea una cuenta';
@@ -210,9 +213,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final switchButtonText = isLoginMode ? 'Registrarse' : 'Iniciar Sesión';
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      // Ya no especificamos el color de fondo aquí, viene de theme.scaffoldBackgroundColor
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        // Ya no especificamos el color de fondo aquí, viene de theme.appBarTheme.backgroundColor
         elevation: 0,
       ),
       body: SafeArea(
@@ -250,6 +253,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 if (!isLoginMode) ...[
                   // Campo Nombre (solo en modo Registro)
                   _buildInputField(
+                    context: context,
                     controller: nameController,
                     hintText: 'Nombre',
                     isPassword: false,
@@ -263,6 +267,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
                 // Campo Correo Electrónico
                 _buildInputField(
+                  context: context,
                   controller: emailController,
                   hintText: 'Correo Electrónico',
                   isPassword: false,
@@ -275,6 +280,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
                 // Campo Contraseña
                 _buildInputField(
+                  context: context,
                   controller: passwordController,
                   hintText: 'Contraseña (mínimo 6 caracteres)',
                   isPassword: true,
@@ -299,14 +305,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: buttonColor,
-                      foregroundColor: buttonTextColor,
+                      // Usa el color configurado en ElevatedButtonThemeData de lightTheme/darkTheme
+                      backgroundColor: theme.elevatedButtonTheme.style?.backgroundColor?.resolve({MaterialState.selected}) ?? primaryColor,
+                      foregroundColor: theme.elevatedButtonTheme.style?.foregroundColor?.resolve({MaterialState.selected}) ?? Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: _isLoading
-                        ? const CircularProgressIndicator(color: buttonTextColor)
+                        ? const CircularProgressIndicator(color: Colors.white)
                         : Text(mainButtonText, style: const TextStyle(fontSize: 18)),
                   ),
                 ),
@@ -332,8 +339,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       FocusScope.of(context).unfocus();
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: buttonColor,
-                      side: const BorderSide(color: buttonColor),
+                      foregroundColor: primaryColor,
+                      side: BorderSide(color: primaryColor),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),

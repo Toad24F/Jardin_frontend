@@ -129,7 +129,7 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
                   Expanded(
                     child: Text(
                       'Veces al día:',
-                      style: descriptionTextStyle,
+                      style: labelStyle,
                     ),
                   ),
                   // Control de Número (Spinner)
@@ -141,7 +141,7 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
                       children: [
-                        Text('$_dailyFrequency', style: const TextStyle(fontSize: 18)),
+                        Text('$_dailyFrequency', style: const TextStyle(fontSize: 18,color: Color(0xFF6C4B4B))),
                         Column(
                           children: [
                             SizedBox(
@@ -154,6 +154,7 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
                                     _dailyFrequency++;
                                   });
                                 },
+                                color: primaryTextColor,
                               ),
                             ),
                             SizedBox(
@@ -168,6 +169,7 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
                                     }
                                   });
                                 },
+                                color: primaryTextColor,
                               ),
                             ),
                           ],
@@ -186,7 +188,7 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: inputFillColor,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: primaryTextColor.withOpacity(0.5)),
                 ),
