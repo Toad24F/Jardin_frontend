@@ -1,25 +1,28 @@
+import 'package:Jardin_de_los_habitos/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import 'auth_screen.dart';
 
+// Se eliminan las constantes de color fijas y se reemplazan por referencias al tema.
+
 // Colores y Estilos para consistencia
-const Color primaryTextColor = Color(0xFF6C4B4B); // Rojizo oscuro
-const Color backgroundColor = Color(0xFFEFE8DE); // Fondo principal claro
-const Color buttonColor = Color(0xFF6C4B4B); // Usaremos el primaryTextColor para el botón de Guardar
-const Color buttonTextColor = Colors.white;
+// Ahora son funciones que toman el contexto para obtener los colores dinámicos
+TextStyle getAppBarTitleStyle(BuildContext context) {
+  return TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    color: Theme.of(context).colorScheme.primary,
+  );
+}
 
-final TextStyle appBarTitleStyle = TextStyle(
-  fontSize: 20,
-  fontWeight: FontWeight.bold,
-  color: primaryTextColor,
-);
-
-final TextStyle labelStyle = TextStyle(
-  fontSize: 18,
-  fontWeight: FontWeight.bold,
-  color: Colors.black,
-);
+TextStyle getLabelStyle(BuildContext context) {
+  return TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+    color: Theme.of(context).colorScheme.onBackground,
+  );
+}
 
 class AddHabitScreen extends ConsumerStatefulWidget {
   const AddHabitScreen({super.key});
@@ -77,14 +80,27 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final onBackground = theme.colorScheme.onBackground;
+    final cardColor = theme.colorScheme.surface; // Color de fondo de los campos
+
+    final TextStyle appBarTitleStyle = getAppBarTitleStyle(context);
+    final TextStyle labelStyle = getLabelStyle(context);
+    final TextStyle descriptionTextStyle = TextStyle(
+      fontSize: 16,
+      color: onBackground.withOpacity(0.7),
+    );
+
+
     return Scaffold(
-      backgroundColor: backgroundColor,
+      // Ya no tiene backgroundColor fijo, usa theme.scaffoldBackgroundColor
       appBar: AppBar(
-        backgroundColor: backgroundColor,
+        // Ya no tiene backgroundColor fijo, usa theme.appBarTheme
         elevation: 0,
         title: Text('Añade tu hábito', style: appBarTitleStyle),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: primaryTextColor),
+          icon: Icon(Icons.arrow_back_ios, color: primaryColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -98,15 +114,15 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
               // --- 1. Nombre del Hábito ---
               TextFormField(
                 controller: _nameController,
-                style: const TextStyle(fontSize: 22, color: Colors.black),
+                style: TextStyle(fontSize: 22, color: onBackground), // Color de texto dinámico
                 decoration: InputDecoration(
                   labelText: 'Nombre de tu hábito ...',
-                  labelStyle: labelStyle.copyWith(color: primaryTextColor.withOpacity(0.7)),
-                  enabledBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: primaryTextColor, width: 2),
+                  labelStyle: labelStyle.copyWith(color: primaryColor.withOpacity(0.7)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: primaryColor, width: 2),
                   ),
-                  focusedBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: primaryTextColor, width: 2),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: primaryColor, width: 2),
                   ),
                   floatingLabelBehavior: FloatingLabelBehavior.never, // Mantiene el placeholder
                 ),
@@ -129,38 +145,43 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
                   Expanded(
                     child: Text(
                       'Veces al día:',
-                      style: labelStyle,
+                      style: descriptionTextStyle,
                     ),
                   ),
                   // Control de Número (Spinner)
                   Container(
                     decoration: BoxDecoration(
-                      border: Border.all(color: primaryTextColor),
+                      border: Border.all(color: primaryColor),
                       borderRadius: BorderRadius.circular(5),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
                       children: [
-                        Text('$_dailyFrequency', style: const TextStyle(fontSize: 18,color: Color(0xFF6C4B4B))),
+                        Text(
+                          '$_dailyFrequency',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: onBackground, // Color de texto dinámico
+                          ),
+                        ),
                         Column(
                           children: [
                             SizedBox(
                               height: 30,
                               child: IconButton(
-                                icon: const Icon(Icons.arrow_drop_up, size: 20),
+                                icon: Icon(Icons.arrow_drop_up, size: 20, color: primaryColor), // Color del ícono primario
                                 padding: EdgeInsets.zero,
                                 onPressed: () {
                                   setState(() {
                                     _dailyFrequency++;
                                   });
                                 },
-                                color: primaryTextColor,
                               ),
                             ),
                             SizedBox(
                               height: 30,
                               child: IconButton(
-                                icon: const Icon(Icons.arrow_drop_down, size: 20),
+                                icon: Icon(Icons.arrow_drop_down, size: 20, color: primaryColor), // Color del ícono primario
                                 padding: EdgeInsets.zero,
                                 onPressed: () {
                                   setState(() {
@@ -169,7 +190,6 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
                                     }
                                   });
                                 },
-                                color: primaryTextColor,
                               ),
                             ),
                           ],
@@ -188,15 +208,17 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardColor, // Fondo del área de texto dinámico
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: primaryTextColor.withOpacity(0.5)),
+                  border: Border.all(color: primaryColor.withOpacity(0.5)),
                 ),
                 child: TextFormField(
                   controller: _notesController,
                   maxLines: 5,
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: onBackground), // Color de texto dinámico
+                  decoration: InputDecoration(
                     hintText: 'Ingrese aquí el porqué...',
+                    hintStyle: TextStyle(color: onBackground.withOpacity(0.5)),
                     border: InputBorder.none,
                     isDense: true,
                   ),
@@ -211,15 +233,9 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveHabit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonColor,
-                    foregroundColor: buttonTextColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+                  // Los colores del botón ya se heredan correctamente de theme.elevatedButtonTheme
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: buttonTextColor)
+                      ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('Guardar', style: TextStyle(fontSize: 18)),
                 ),
               ),

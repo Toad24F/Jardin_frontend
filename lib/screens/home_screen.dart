@@ -118,7 +118,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
     // Color de texto e ícono dinámico para el Drawer (blanco en claro, acento en oscuro)
-    final itemColor = isDarkMode ? theme.colorScheme.primary : primaryTextColor;
+    final itemColor = isDarkMode ? theme.colorScheme.primary : primaryColor;
 
     return ListTile(
       leading: Icon(icon, color: itemColor),
@@ -353,8 +353,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // Usamos el correo real (Texto en gris suave)
                     Text(
                       userEmail,
-                      style: const TextStyle(
-                        color: primaryTextColor, // Color fijo que contrasta
+                      style: TextStyle(
+                        color: primaryColor, // Color fijo que contrasta
                         fontSize: 14,
                       ),
                     ),
